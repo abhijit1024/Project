@@ -1,7 +1,10 @@
 RSpec.describe 'database ' do
+    before do
+        `rm -rf test.db `
+    end
     def run_script(commands)
         raw_output = nil
-        IO.popen("./db", "r+") do |pipe|
+        IO.popen("./db test.db", "r+") do |pipe|
             commands.each do |command|
                 pipe.puts command
             end
@@ -49,9 +52,9 @@ RSpec.describe 'database ' do
             "db > ",
         ])
     end
-    if 'prints error message if strings are too long' do
+    it 'prints error message if strings are too long' do
         long_username = "a"*33
-        long_email = "a"256
+        long_email = "a"*256
         script = [
             "insert 1 #{long_username} #{long_email}",
             "select",
@@ -63,6 +66,39 @@ RSpec.describe 'database ' do
             "db > Executed.",
             "db > ",
         ])
+    end
+    it 'prints an error message if id is negative' do
+        script = [
+            "insert -1 cstack foo@bar.com",
+            "select",
+            ".exit",
+        ]
+        result = run_script(script)
+        expect(result).to match_array([
+            "db > ID must be positive.",
+            "db > Executed.",
+            "db > ",
+        ])
+    end
+    if 'keeps data after closing connection ' do
+        result1 = run_script([
+            "insert 1 user1 person@example.com",
+            "exit",
+        ])
+        expect(result1).to match_array([
+            "db > Executed.",
+            "db > ",
+        ])
+        result2 = run_script([
+            "select",
+            ".exit",
+        ])
+        expect(result2).to match_array([
+            "db > (1, user1, person1@example.com)",
+            "Executed.",
+            "db > ",
+        ])
+    end
 end
 
 
